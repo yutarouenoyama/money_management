@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>家計管理アプリ</title>
+
+  <!-- スマホ対応 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 20px; }
+    .month { font-size: 18px; color: #666; }
+    .money { font-size: 36px; font-weight: bold; margin-top: 10px; }
+    .remain { font-size: 28px; margin: 15px 0; }
+    input { font-size: 16px; width: 60%; max-width: 200px; padding: 5px; }
+    button { font-size: 16px; margin: 5px 2px; padding: 8px 12px; }
+    hr { margin: 30px 0; }
+    canvas { max-width: 100%; height: auto !important; }
+  </style>
+</head>
+<body>
+
+  <!-- 貯蓄目標 -->
+  <div class="month" id="month"></div>
+  <div class="money" id="target"></div>
+
+  <!-- 食費管理 -->
+  <h2>今月の食費残額</h2>
+  <div class="remain" id="remainFood"></div>
+  <input id="expenseFood" type="number" placeholder="使った金額">
+  <button onclick="addExpenseFood()">追加</button>
+  <button onclick="undoExpenseFood()">元に戻す</button>
+  <canvas id="foodChart"></canvas>
+
+  <hr>
+
+  <!-- 雑費管理 -->
+  <h2>今月の雑費残額</h2>
+  <div class="remain" id="remainMisc"></div>
+  <input id="expenseMisc" type="number" placeholder="使った金額">
+  <button onclick="addExpenseMisc()">追加</button>
+  <button onclick="undoExpenseMisc()">元に戻す</button>
+  <canvas id="miscChart"></canvas>
+
+  <hr>
+
+  <!-- 交際費管理 -->
+  <h2>今月の交際費残額</h2>
+  <div class="remain" id="remainSocial"></div>
+  <input id="expenseSocial" type="number" placeholder="使った金額">
+  <button onclick="addExpenseSocial()">追加</button>
+  <button onclick="undoExpenseSocial()">元に戻す</button>
+  <canvas id="socialChart"></canvas>
+
+  <hr>
+
+  <!-- サイト情報ボタン -->
+  <button onclick="location.href='about.html'">このサイトについて</button>
+
+  <script>
+    // ===== 貯蓄目標 =====
+    const startMoney = 1380000;
+    const monthIncrease = 120000;
+    const bonusMonths = [6, 12];
+    const bonusAmount = 600000;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    document.getElementById("month").innerText = `${year}年${month}月の貯蓄目標`;
+    let target;
+    if (year === 2025 && month === 12) {
+      target = startMoney;
+    } else {
+      const startYear = 2026;
+      const startMonth = 1;
+      let monthsPassed = (year - startYear) * 12 + (month - startMonth) + 1;
+      target = startMoney + monthIncrease * monthsPassed;
+      if (bonusMonths.includes(month)) target += bonusAmount;
+    }
+    document.getElementById("target").innerText = target.toLocaleString() + "円";
+    const monthKey = `${year}-${month}`;
+
+    // ===== 食費管理 =====
+    const foodRemainEl = document.getElementById("remainFood");
+    let foodHistory = [];
+    let foodSaved = localStorage.getItem("food_" + monthKey);
+    let foodBudget, foodLabels, foodData;
+    if (foodSaved) {
+      foodSaved = JSON.parse(foodSaved);
+      foodBudget = foodSaved.foodBudget;
+      foodLabels = foodSaved.labels;
+      foodData = foodSaved.data;
+    } else {
+      foodBudget = 45000;
+      foodLabels = ["開始"];
+      foodData = [foodBudget];
+    }
+    foodRemainEl.innerText = foodBudget.toLocaleString() + "円";
+
+    const ctxFood = document.getElementById("foodChart").getContext("2d");
+    const foodChart = new Chart(ctxFood, {
+      type: "line",
+      data: { labels: foodLabels, datasets: [{ label: "食費残額", data: foodData, borderColor: "blue", fill: false, tension: 0.2 }] },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: 50000 } } }
+    });
+
+    function addExpenseFood() {
+      const expense = Number(document.getElementById("expenseFood").value);
+      if (!expense) return;
+      foodHistory.push({ foodBudget, labels: [...foodLabels], data: [...foodData] });
+      foodBudget -= expense;
+      if (foodBudget < 0) foodBudget = 0;
+      const dayLabel = new Date().getDate() + "日";
+      const idx = foodLabels.indexOf(dayLabel);
+      if (idx !== -1) foodData[idx] = foodBudget;
+      else { foodLabels.push(dayLabel); foodData.push(foodBudget); }
+      foodRemainEl.innerText = foodBudget.toLocaleString() + "円";
+      foodChart.data.labels = foodLabels;
+      foodChart.data.datasets[0].data = foodData;
+      foodChart.update();
+      document.getElementById("expenseFood").value = "";
+      localStorage.setItem("food_" + monthKey, JSON.stringify({ foodBudget, labels: foodLabels, data: foodData }));
+    }
+
+    function undoExpenseFood() {
+      if (foodHistory.length === 0) return;
+      const last = foodHistory.pop();
+      foodBudget = last.foodBudget;
+      foodLabels = last.labels;
+      foodData = last.data;
+      foodRemainEl.innerText = foodBudget.toLocaleString() + "円";
+      foodChart.data.labels = foodLabels;
+      foodChart.data.datasets[0].data = foodData;
+      foodChart.update();
+      localStorage.setItem("food_" + monthKey, JSON.stringify({ foodBudget, labels: foodLabels, data: foodData }));
+    }
+
+    // ===== 雑費管理 =====
+    const miscRemainEl = document.getElementById("remainMisc");
+    let miscHistory = [];
+    let miscSaved = localStorage.getItem("misc_" + monthKey);
+    let miscBudget, miscLabels, miscData;
+    if (miscSaved) {
+      miscSaved = JSON.parse(miscSaved);
+      miscBudget = miscSaved.miscBudget;
+      miscLabels = miscSaved.labels;
+      miscData = miscSaved.data;
+    } else {
+      miscBudget = 20000;
+      miscLabels = ["開始"];
+      miscData = [miscBudget];
+    }
+    miscRemainEl.innerText = miscBudget.toLocaleString() + "円";
+
+    const ctxMisc = document.getElementById("miscChart").getContext("2d");
+    const miscChart = new Chart(ctxMisc, {
+      type: "line",
+      data: { labels: miscLabels, datasets: [{ label: "雑費残額", data: miscData, borderColor: "green", fill: false, tension: 0.2 }] },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: 20000 } } }
+    });
+
+    function addExpenseMisc() {
+      const expense = Number(document.getElementById("expenseMisc").value);
+      if (!expense) return;
+      miscHistory.push({ miscBudget, labels: [...miscLabels], data: [...miscData] });
+      miscBudget -= expense;
+      if (miscBudget < 0) miscBudget = 0;
+      const dayLabel = new Date().getDate() + "日";
+      const idx = miscLabels.indexOf(dayLabel);
+      if (idx !== -1) miscData[idx] = miscBudget;
+      else { miscLabels.push(dayLabel); miscData.push(miscBudget); }
+      miscRemainEl.innerText = miscBudget.toLocaleString() + "円";
+      miscChart.data.labels = miscLabels;
+      miscChart.data.datasets[0].data = miscData;
+      miscChart.update();
+      document.getElementById("expenseMisc").value = "";
+      localStorage.setItem("misc_" + monthKey, JSON.stringify({ miscBudget, labels: miscLabels, data: miscData }));
+    }
+
+    function undoExpenseMisc() {
+      if (miscHistory.length === 0) return;
+      const last = miscHistory.pop();
+      miscBudget = last.miscBudget;
+      miscLabels = last.labels;
+      miscData = last.data;
+      miscRemainEl.innerText = miscBudget.toLocaleString() + "円";
+      miscChart.data.labels = miscLabels;
+      miscChart.data.datasets[0].data = miscData;
+      miscChart.update();
+      localStorage.setItem("misc_" + monthKey, JSON.stringify({ miscBudget, labels: miscLabels, data: miscData }));
+    }
+
+    // ===== 交際費管理 =====
+    const socialRemainEl = document.getElementById("remainSocial");
+    let socialHistory = [];
+    const socialMonthKey = "social_" + monthKey;
+    let socialSaved = localStorage.getItem(socialMonthKey);
+    let socialBudget, socialLabels, socialData;
+    const baseSocial = 100000; // 2025/12
+    const increasePerMonth = 30000;
+    const monthsPassedSocial = (year - 2025) * 12 + (month - 12);
+    if (socialSaved) {
+      socialSaved = JSON.parse(socialSaved);
+      socialBudget = socialSaved.socialBudget;
+      socialLabels = socialSaved.labels;
+      socialData = socialSaved.data;
+    } else {
+      socialBudget = baseSocial + monthsPassedSocial * increasePerMonth;
+      socialLabels = ["開始"];
+      socialData = [socialBudget];
+    }
+    socialRemainEl.innerText = socialBudget.toLocaleString() + "円";
+
+    const ctxSocial = document.getElementById("socialChart").getContext("2d");
+    const socialChart = new Chart(ctxSocial, {
+      type: "line",
+      data: { labels: socialLabels, datasets: [{ label: "交際費残額", data: socialData, borderColor: "red", fill: false, tension: 0.2 }] },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: socialBudget } } }
+    });
+
+    function addExpenseSocial() {
+      const expense = Number(document.getElementById("expenseSocial").value);
+      if (!expense) return;
+      socialHistory.push({ socialBudget, labels: [...socialLabels], data: [...socialData] });
+      socialBudget -= expense;
+      if (socialBudget < 0) socialBudget = 0;
+      const dayLabel = new Date().getDate() + "日";
+      const idx = socialLabels.indexOf(dayLabel);
+      if (idx !== -1) socialData[idx] = socialBudget;
+      else { socialLabels.push(dayLabel); socialData.push(socialBudget); }
+      socialRemainEl.innerText = socialBudget.toLocaleString() + "円";
+      socialChart.data.labels = socialLabels;
+      socialChart.data.datasets[0].data = socialData;
+      socialChart.update();
+      document.getElementById("expenseSocial").value = "";
+      localStorage.setItem(socialMonthKey, JSON.stringify({ socialBudget, labels: socialLabels, data: socialData }));
+    }
+
+    function undoExpenseSocial() {
+      if (socialHistory.length === 0) return;
+      const last = socialHistory.pop();
+      socialBudget = last.socialBudget;
+      socialLabels = last.labels;
+      socialData = last.data;
+      socialRemainEl.innerText = socialBudget.toLocaleString() + "円";
+      socialChart.data.labels = socialLabels;
+      socialChart.data.datasets[0].data = socialData;
+      socialChart.update();
+      localStorage.setItem(socialMonthKey, JSON.stringify({ socialBudget, labels: socialLabels, data: socialData }));
+    }
+  </script>
+</body>
+</html>
