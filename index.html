@@ -4,21 +4,17 @@
   <meta charset="UTF-8">
   <title>家計管理アプリ</title>
 
-  <!-- スマホ対応 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
 
   <style>
-    body { font-family: sans-serif; text-align: center; margin: 20px; }
-    .month { font-size: 18px; color: #666; }
-    .money { font-size: 36px; font-weight: bold; margin-top: 10px; }
-    .remain { font-size: 28px; margin: 15px 0; }
-    input { font-size: 16px; width: 60%; max-width: 200px; padding: 5px; }
-    button { font-size: 16px; margin: 5px 2px; padding: 8px 12px; }
-    hr { margin: 30px 0; }
-    canvas { max-width: 100%; height: auto !important; }
+    body { font-family: sans-serif; text-align: center; margin-top: 30px; }
+    .month { font-size: 20px; color: #666; }
+    .money { font-size: 48px; font-weight: bold; margin-top: 10px; }
+    .remain { font-size: 36px; margin: 20px 0; }
+    input { font-size: 16px; width: 120px; }
+    button { font-size: 16px; margin-left: 5px; margin-top: 5px; }
+    hr { margin: 40px 0; }
   </style>
 </head>
 <body>
@@ -33,7 +29,7 @@
   <input id="expenseFood" type="number" placeholder="使った金額">
   <button onclick="addExpenseFood()">追加</button>
   <button onclick="undoExpenseFood()">元に戻す</button>
-  <canvas id="foodChart"></canvas>
+  <canvas id="foodChart" width="350" height="200"></canvas>
 
   <hr>
 
@@ -43,7 +39,7 @@
   <input id="expenseMisc" type="number" placeholder="使った金額">
   <button onclick="addExpenseMisc()">追加</button>
   <button onclick="undoExpenseMisc()">元に戻す</button>
-  <canvas id="miscChart"></canvas>
+  <canvas id="miscChart" width="350" height="200"></canvas>
 
   <hr>
 
@@ -53,7 +49,7 @@
   <input id="expenseSocial" type="number" placeholder="使った金額">
   <button onclick="addExpenseSocial()">追加</button>
   <button onclick="undoExpenseSocial()">元に戻す</button>
-  <canvas id="socialChart"></canvas>
+  <canvas id="socialChart" width="350" height="200"></canvas>
 
   <hr>
 
@@ -61,15 +57,18 @@
   <button onclick="location.href='about.html'">このサイトについて</button>
 
   <script>
-    // ===== 貯蓄目標 =====
+    // ===== 貯蓄目標表示 =====
     const startMoney = 1380000;
     const monthIncrease = 120000;
     const bonusMonths = [6, 12];
     const bonusAmount = 600000;
+
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
+
     document.getElementById("month").innerText = `${year}年${month}月の貯蓄目標`;
+
     let target;
     if (year === 2025 && month === 12) {
       target = startMoney;
@@ -81,6 +80,7 @@
       if (bonusMonths.includes(month)) target += bonusAmount;
     }
     document.getElementById("target").innerText = target.toLocaleString() + "円";
+
     const monthKey = `${year}-${month}`;
 
     // ===== 食費管理 =====
@@ -88,6 +88,7 @@
     let foodHistory = [];
     let foodSaved = localStorage.getItem("food_" + monthKey);
     let foodBudget, foodLabels, foodData;
+
     if (foodSaved) {
       foodSaved = JSON.parse(foodSaved);
       foodBudget = foodSaved.foodBudget;
@@ -98,13 +99,14 @@
       foodLabels = ["開始"];
       foodData = [foodBudget];
     }
+
     foodRemainEl.innerText = foodBudget.toLocaleString() + "円";
 
     const ctxFood = document.getElementById("foodChart").getContext("2d");
     const foodChart = new Chart(ctxFood, {
       type: "line",
       data: { labels: foodLabels, datasets: [{ label: "食費残額", data: foodData, borderColor: "blue", fill: false, tension: 0.2 }] },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: 50000 } } }
+      options: { scales: { y: { beginAtZero: true, suggestedMax: 45000 } } }
     });
 
     function addExpenseFood() {
@@ -143,6 +145,7 @@
     let miscHistory = [];
     let miscSaved = localStorage.getItem("misc_" + monthKey);
     let miscBudget, miscLabels, miscData;
+
     if (miscSaved) {
       miscSaved = JSON.parse(miscSaved);
       miscBudget = miscSaved.miscBudget;
@@ -153,13 +156,14 @@
       miscLabels = ["開始"];
       miscData = [miscBudget];
     }
+
     miscRemainEl.innerText = miscBudget.toLocaleString() + "円";
 
     const ctxMisc = document.getElementById("miscChart").getContext("2d");
     const miscChart = new Chart(ctxMisc, {
       type: "line",
       data: { labels: miscLabels, datasets: [{ label: "雑費残額", data: miscData, borderColor: "green", fill: false, tension: 0.2 }] },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: 20000 } } }
+      options: { scales: { y: { beginAtZero: true, suggestedMax: 20000 } } }
     });
 
     function addExpenseMisc() {
@@ -197,11 +201,13 @@
     const socialRemainEl = document.getElementById("remainSocial");
     let socialHistory = [];
     const socialMonthKey = "social_" + monthKey;
+
     let socialSaved = localStorage.getItem(socialMonthKey);
     let socialBudget, socialLabels, socialData;
     const baseSocial = 100000; // 2025/12
     const increasePerMonth = 30000;
     const monthsPassedSocial = (year - 2025) * 12 + (month - 12);
+
     if (socialSaved) {
       socialSaved = JSON.parse(socialSaved);
       socialBudget = socialSaved.socialBudget;
@@ -212,13 +218,14 @@
       socialLabels = ["開始"];
       socialData = [socialBudget];
     }
+
     socialRemainEl.innerText = socialBudget.toLocaleString() + "円";
 
     const ctxSocial = document.getElementById("socialChart").getContext("2d");
     const socialChart = new Chart(ctxSocial, {
       type: "line",
       data: { labels: socialLabels, datasets: [{ label: "交際費残額", data: socialData, borderColor: "red", fill: false, tension: 0.2 }] },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: socialBudget } } }
+      options: { scales: { y: { beginAtZero: true, suggestedMax: socialBudget } } }
     });
 
     function addExpenseSocial() {
@@ -251,6 +258,7 @@
       socialChart.update();
       localStorage.setItem(socialMonthKey, JSON.stringify({ socialBudget, labels: socialLabels, data: socialData }));
     }
+
   </script>
 </body>
 </html>
