@@ -106,7 +106,7 @@
     const foodChart = new Chart(ctxFood, {
       type: "line",
       data: { labels: foodLabels, datasets: [{ label: "食費残額", data: foodData, borderColor: "blue", fill: false, tension: 0.2 }] },
-      options: { scales: { y: { beginAtZero: true, suggestedMax: 45000 } } }
+      options: { scales: { y: { beginAtZero: true, suggestedMax: 50000 } } }
     });
 
     function addExpenseFood() {
@@ -205,7 +205,7 @@
     let socialSaved = localStorage.getItem(socialMonthKey);
     let socialBudget, socialLabels, socialData;
     const baseSocial = 100000; // 2025/12
-    const increasePerMonth = 30000;
+    const increasePerMonth = 60000;
     const monthsPassedSocial = (year - 2025) * 12 + (month - 12);
 
     if (socialSaved) {
